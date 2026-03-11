@@ -1,0 +1,97 @@
+# Example GitLab Duo Agent deployment configuration for CodeSight.
+# Adjust keys/fields to your GitLab Duo Agent Platform version.
+
+apiVersion: duoplatform.gitlab.com/v1alpha1
+kind: DuoAgent
+metadata:
+  name: codesight
+  description: GitLab AI agent for code error detection and fix suggestions
+spec:
+  runtime:
+    language: python
+    entrypoint: src/codesight/main.py
+    healthEndpoint: /health
+    port: 8000
+
+  triggers:
+    - name: merge-request-opened
+      source: gitlab.webhook
+      event: Merge Request Hook
+      filters:
+        action: [open, reopen, update]
+
+    - name: pipeline-failed
+      source: gitlab.webhook
+      event: Pipeline Hook
+      filters:
+        status: [failed]
+
+    - name: on-demand-scan
+      source: gitlab.webhook
+      event: CodeSight Scan Request
+
+  permissions:
+    gitlabApi:
+      - read_repository
+      - read_merge_request
+      - write_merge_request
+      - read_issue
+      - write_issue
+
+  environment:
+    - name: GITLAB_URL
+      required: true
+    - name: GITLAB_TOKEN
+      required: true
+      secret: true
+    - name: GITLAB_PROJECT_ID
+      required: true
+    - name: GITLAB_WEBHOOK_SECRET
+      required: false
+      secret: true
+
+    - name: MODEL_PROVIDER
+      required: true
+      default: openai
+    - name: MODEL_NAME
+      required: true
+      default: gpt-4.1-mini
+    - name: OPENAI_API_KEY
+      required: false
+      secret: true
+    - name: OPENAI_BASE_URL
+      required: false
+      default: https://api.openai.com/v1
+
+    - name: HUGGINGFACE_API_TOKEN
+      required: false
+      secret: true
+    - name: HUGGINGFACE_MODEL_ID
+      required: false
+
+    - name: LOCAL_MODEL_URL
+      required: false
+    - name: LOCAL_MODEL_TOKEN
+      required: false
+      secret: true
+
+    - name: AUTO_CREATE_MR
+      required: false
+      default: "false"
+    - name: COMMENT_ON_MR
+      required: false
+      default: "true"
+
+  outputs:
+    - type: merge-request-comment
+      when: issues_detected
+    - type: issue-comment
+      when: on_demand_scan
+    - type: draft-merge-request
+      when: auto_create_mr_enabled
+
+# Production hardening ideas:
+# - Add request signature verification and replay protection.
+# - Limit file size and path allow-list to avoid scanning secrets or binaries.
+# - Add queue workers for large repositories.
+# - Add persistent datastore for scan history and deduplication.

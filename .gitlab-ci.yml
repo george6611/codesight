@@ -1,0 +1,28 @@
+stages:
+  - test
+  - scan
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHONPATH: "$CI_PROJECT_DIR/src"
+
+cache:
+  paths:
+    - .cache/pip
+
+unit_tests:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install -r requirements.txt
+    - pip install -e .
+    - pytest -q
+
+codesight_scan:
+  stage: scan
+  image: python:3.11
+  script:
+    - pip install -r requirements.txt
+    - pip install -e .
+    - python scripts/run_local_scan.py --repo .
+  allow_failure: true

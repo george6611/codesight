@@ -1,0 +1,5 @@
+{
+  "event_name": "CodeSight Scan Request",
+  "issue_iid": 123,
+  "repo_path": "."
+}
